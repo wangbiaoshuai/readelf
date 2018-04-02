@@ -71,27 +71,42 @@ function get_func_asse()
     #    start=`nm -n $elf_file | \egrep "$class_name.*$func_name" | awk '{print $1}'`
     #    end=`nm -n $elf_file | \egrep -A1 "$class_name.*$func_name" | awk '{getline; print $1}'`
     #fi
-    local start=`nm -n $elf_file | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | \grep " $func" | awk '{print $1}'`
-    local end=`nm -n $elf_file | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | \grep -A1 " $func" | awk '{getline; print $1}'`
+    local start=`nm -n $elf_file | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | \grep " $func$" | awk '{print $1}'`
+    local end=`nm -n $elf_file | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | \grep -A1 " $func$" | awk '{getline; print $1}'`
     #调试##################################################
     #echo "start-address: 0x$start, end-address: 0x$end"
     #调试结束##############################################
+
+    local function_num=`nm -n $elf_file | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | \grep " $func$" | awk '{print $1}'| wc -l`
+    if [ $function_num -ne 1 ]
+    then
+        return 1
+    fi
 
     if [ "$start" = "" ] || [ "$end" = "" ]
     then
         #调试#########################################################
         #echo -e "$func is not a method in $elf_file.\n"
         #调试结束####################################################
+        return 0
+    fi
+
+    if [ "$start" = "$end" ]
+    then
         return 1
     fi
 
     objdump -d $elf_file --start-address="0x$start" --stop-address="0x$end" > $tmp_file
     if [ "$?" != "0" ]
     then
-        echo "$func int $elf_file: objdump error."
+        echo "$func in $elf_file: objdump error."
         exit 1
     fi
     tmp=`\grep -n "$start" $tmp_file`
+    if [ "$tmp" = "" ]
+    then
+        return 1
+    fi
     num=${tmp%%:*}
 
     awk -F\t "NR>$num" $tmp_file > tmp
@@ -228,13 +243,17 @@ function get_functions()
     elf_1=$1
     elf_2=$2
     #nm -n "$elf_1" | c++filt | \egrep "\s[T|W]\s" | awk '{print $3}' > tmp
-    nm -n "$elf_1" | c++filt | uniq | \egrep "\s[T|W]\s" | awk '{print $3" "$4" "$5" "$6" "$7" "$8}' > tmp
+    nm -n "$elf_1" | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | awk '{print $3" "$4" "$5" "$6" "$7" "$8}' > tmp
 
     local i=0
     while read LINE
     do
         #tmp_func=${LINE%%(*}
-        tmp_func=$LINE
+        tmp_func="$LINE"
+        if [ "$tmp_func" = "" ]
+        then
+            continue
+        fi
         local j=0
         local flag=0
         while [ $j -lt ${#system_method[*]} ]
@@ -255,12 +274,16 @@ function get_functions()
     done < tmp
 
     #nm -n "$elf_2" | c++filt | \egrep "\s[T|W]\s" | awk '{print $3}' > tmp
-    nm -n "$elf_2" | c++filt | uniq | \egrep "\s[T|W]\s" | awk '{print $3" "$4" "$5" "$6" "$7" "$8}' > tmp
+    nm -n "$elf_2" | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | awk '{print $3" "$4" "$5" "$6" "$7" "$8}' > tmp
     local i=0
     while read LINE
     do
         #tmp_func=${LINE%%(*}
-        tmp_func=$LINE
+        tmp_func="$LINE"
+        if [ "$tmp_func" = "" ]
+        then
+            continue
+        fi
         local j=0
         local flag=0
         while [ $j -lt ${#system_method[*]} ]
