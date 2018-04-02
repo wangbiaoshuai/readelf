@@ -18,6 +18,8 @@ system_method[2]="__libc_csu_fini"
 system_method[3]="__libc_csu_init"
 system_method[4]="data_start"
 system_method[5]="_fini"
+system_method[6]="call_gmon_start"
+system_method[7]="frame_dummy"
 
 
 if [ ! -e "$elf_file_1" ] || [ ! -e "$elf_file_2" ]
@@ -25,6 +27,36 @@ then
     echo "$elf_file_1 or $elf_file_2 is not exit."
     exit 1
 fi
+
+function is_system_func()
+{
+    local tmp_func="$1"
+    #echo "$tmp_func"
+    if [ "$tmp_func" = "" ]
+    then
+        return 1
+    fi
+
+    result=`echo "$tmp_func" | \egrep "^__"`
+    if [ "$result" != "" ]
+    then
+        return 0
+    fi
+
+    local j=0
+    while [ $j -lt ${#system_method[*]} ]
+    do
+        local tmp_func_2=${system_method[j]}
+        if [ "$tmp_func" = "$tmp_func_2" ]
+        then
+            return 0
+        fi
+        let j++
+    done
+
+    return 1
+}
+
 
 function clean_nop()
 {
@@ -254,18 +286,23 @@ function get_functions()
         then
             continue
         fi
-        local j=0
+        #local j=0
         local flag=0
-        while [ $j -lt ${#system_method[*]} ]
-        do
-            tmp_func_2=${system_method[j]}
-            if [ "$tmp_func" = "$tmp_func_2" ]
-            then
-                flag=1
-                break
-            fi
-            let j++
-        done
+        #while [ $j -lt ${#system_method[*]} ]
+        #do
+        #    tmp_func_2=${system_method[j]}
+        #    if [ "$tmp_func" = "$tmp_func_2" ]
+        #    then
+        #        flag=1
+        #        break
+        #    fi
+        #    let j++
+        #done
+        is_system_func "$tmp_func"
+        if [ $? -eq 0 ]
+        then
+            flag=1
+        fi
         if [ $flag -eq 0 ]
         then
             func_1[i]=$tmp_func
@@ -284,18 +321,23 @@ function get_functions()
         then
             continue
         fi
-        local j=0
+        #local j=0
         local flag=0
-        while [ $j -lt ${#system_method[*]} ]
-        do
-            tmp_func_2=${system_method[j]}
-            if [ "$tmp_func" = "$tmp_func_2" ]
-            then
-                flag=1
-                break
-            fi
-            let j++
-        done
+        #while [ $j -lt ${#system_method[*]} ]
+        #do
+        #    tmp_func_2=${system_method[j]}
+        #    if [ "$tmp_func" = "$tmp_func_2" ]
+        #    then
+        #        flag=1
+        #        break
+        #    fi
+        #    let j++
+        #done
+        is_system_func "$tmp_func"
+        if [ $? -eq 0 ]
+        then
+            flag=1
+        fi
         if [ $flag -eq 0 ]
         then
             func_2[i]=$tmp_func
