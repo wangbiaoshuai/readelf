@@ -1,5 +1,17 @@
 #!/bin/sh
 
+filter_system_method=0
+while getopts ":v" opt
+do
+    case "$opt" in
+        v ) filter_system_method=1;;
+        ? ) echo "error"
+            exit 1;;
+    esac
+done
+shift $(($OPTIND - 1))
+
+
 elf_file_1=$1
 elf_file_2=$2
 #func=$3
@@ -280,34 +292,21 @@ function get_functions()
     local i=0
     while read LINE
     do
-        #tmp_func=${LINE%%(*}
         tmp_func="$LINE"
         if [ "$tmp_func" = "" ]
         then
             continue
         fi
-        #local j=0
-        local flag=0
-        #while [ $j -lt ${#system_method[*]} ]
-        #do
-        #    tmp_func_2=${system_method[j]}
-        #    if [ "$tmp_func" = "$tmp_func_2" ]
-        #    then
-        #        flag=1
-        #        break
-        #    fi
-        #    let j++
-        #done
-        is_system_func "$tmp_func"
-        if [ $? -eq 0 ]
+        if [ $filter_system_method -eq 1 ]
         then
-            flag=1
+            is_system_func "$tmp_func"
+            if [ $? -eq 0 ]
+            then
+                continue
+            fi
         fi
-        if [ $flag -eq 0 ]
-        then
-            func_1[i]=$tmp_func
-            let i++
-        fi
+        func_1[i]=$tmp_func
+        let i++
     done < tmp
 
     #nm -n "$elf_2" | c++filt | \egrep "\s[T|W]\s" | awk '{print $3}' > tmp
@@ -321,28 +320,16 @@ function get_functions()
         then
             continue
         fi
-        #local j=0
-        local flag=0
-        #while [ $j -lt ${#system_method[*]} ]
-        #do
-        #    tmp_func_2=${system_method[j]}
-        #    if [ "$tmp_func" = "$tmp_func_2" ]
-        #    then
-        #        flag=1
-        #        break
-        #    fi
-        #    let j++
-        #done
-        is_system_func "$tmp_func"
-        if [ $? -eq 0 ]
+        if [ $filter_system_method -eq 1 ]
         then
-            flag=1
+            is_system_func "$tmp_func"
+            if [ $? -eq 0 ]
+            then
+                continue
+            fi
         fi
-        if [ $flag -eq 0 ]
-        then
-            func_2[i]=$tmp_func
-            let i++
-        fi
+        func_2[i]=$tmp_func
+        let i++
     done < tmp
     rm -rf tmp
 }
