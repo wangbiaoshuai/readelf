@@ -1,5 +1,8 @@
 #!/bin/sh
 
+PID=$$
+trap sig_func 2
+
 filter_system_method=0
 while getopts ":v" opt
 do
@@ -39,6 +42,13 @@ then
     echo "$elf_file_1 or $elf_file_2 is not exit."
     exit 1
 fi
+
+function sig_func()
+{
+    rm -rf $tmp_file $elf_file_1.$PID $elf_file_2.$PID
+    echo "process $PID is killed."
+    exit 1
+}
 
 function is_system_func()
 {
@@ -115,13 +125,16 @@ function get_func_asse()
     #    start=`nm -n $elf_file | \egrep "$class_name.*$func_name" | awk '{print $1}'`
     #    end=`nm -n $elf_file | \egrep -A1 "$class_name.*$func_name" | awk '{getline; print $1}'`
     #fi
-    local start=`nm -n $elf_file | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | \grep " $func$" | awk '{print $1}'`
-    local end=`nm -n $elf_file | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | \grep -A1 " $func$" | awk '{getline; print $1}'`
+    #local start=`nm -n $elf_file | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | \grep " $func$" | awk '{print $1}'`
+    #local end=`nm -n $elf_file | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | \grep -A1 " $func$" | awk '{getline; print $1}'`
+    local start=`\grep " $func$" $elf_file.$PID | awk '{print $1}' 2>/dev/null`
+    local end=`\grep -A1 " $func$" $elf_file.$PID | awk '{getline; print $1}' 2>/dev/null`
     #调试##################################################
     #echo "start-address: 0x$start, end-address: 0x$end"
     #调试结束##############################################
 
-    local function_num=`nm -n $elf_file | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | \grep " $func$" | awk '{print $1}'| wc -l`
+    #local function_num=`nm -n $elf_file | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | \grep " $func$" | awk '{print $1}'| wc -l`
+    local function_num=`\grep " $func$" $elf_file.$PID | awk '{print $1}'| wc -l`
     if [ $function_num -ne 1 ]
     then
         return 1
@@ -247,6 +260,7 @@ function compare_func_asse()
 
 function get_method_status()
 {
+    #echo "begin get_method_status..."
     local func="$3"
     get_func_asse "$elf_file_1" "$func"
     local i=0
@@ -265,6 +279,7 @@ function get_method_status()
         let i++
     done
 
+    #echo "begin compare_func_asse..."
     compare_func_asse
     if [ "$?" = "0" ]
     then
@@ -280,6 +295,7 @@ function get_method_status()
         i=0
         return 1
     fi
+    #echo "compare_func_asse end."
 }
 
 function get_functions()
@@ -287,7 +303,8 @@ function get_functions()
     elf_1=$1
     elf_2=$2
     #nm -n "$elf_1" | c++filt | \egrep "\s[T|W]\s" | awk '{print $3}' > tmp
-    nm -n "$elf_1" | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | awk '{print $3" "$4" "$5" "$6" "$7" "$8}' > tmp
+    #nm -n "$elf_1" | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | awk '{for(i=3;i<=NF;i++)printf $i" "; printf "\n"}' > tmp
+    awk '{for(i=3;i<=NF;i++)printf $i" "; printf "\n"}' $elf_file_1.$PID > tmp
 
     local i=0
     while read LINE
@@ -310,7 +327,8 @@ function get_functions()
     done < tmp
 
     #nm -n "$elf_2" | c++filt | \egrep "\s[T|W]\s" | awk '{print $3}' > tmp
-    nm -n "$elf_2" | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | awk '{print $3" "$4" "$5" "$6" "$7" "$8}' > tmp
+    #nm -n "$elf_2" | c++filt | uniq | \egrep "\s[T|W|t|w]\s" | awk '{for(i=3;i<=NF;i++)printf $i" "; printf "\n"}' > tmp
+    awk '{for(i=3;i<=NF;i++)printf $i" "; printf "\n"}' $elf_file_2.$PID > tmp
     local i=0
     while read LINE
     do
@@ -336,6 +354,8 @@ function get_functions()
 
 function main()
 {
+    nm -n $elf_file_1 | c++filt | uniq | \egrep "\s[T|W|t|w]\s" > "$elf_file_1.$PID"
+    nm -n $elf_file_2 | c++filt | uniq | \egrep "\s[T|W|t|w]\s" > "$elf_file_2.$PID"
     functions=()
     get_functions $elf_file_1 $elf_file_2
 
@@ -359,39 +379,43 @@ function main()
 #    echo
     #调试结束#######################################
 
-    local k=0
-    local i=0
+#    local k=0
+#    local i=0
     clear
     printf "%5s%40s%10s%10s%20s\n" "number" "method\\file" $elf_1 $elf_2 "result"
-    while [ $i -lt ${#func_1[*]} ]
+#    while [ $i -lt ${#func_1[*]} ]
+#    do
+#        get_method_status "$elf_file_1" "$elf_file_2" "${func_1[i]}"
+#        let i++
+#    done
+
+    for var in "${func_1[@]}"
     do
-        get_method_status "$elf_file_1" "$elf_file_2" "${func_1[i]}"
-        let i++
+        get_method_status "$elf_file_1" "$elf_file_2" "$var"
     done
 
-    local i=0
-    while [ $i -lt ${#func_2[*]} ]
+    for var in "${func_2[@]}"
     do
-        local j=0
-        local flag=0
-        while [ $j -lt ${#func_1[*]} ]
-        do
-            var1=${func_2[i]}
-            var2=${func_1[j]}
-            if [ "$var1" = "$var2" ]
-            then
-                flag=1
-                break
-            fi
-            let j++
-        done
-        if [ $flag -eq 0 ]
+        local result=`echo ${func_1[*]} | \grep "$var"`
+        if [ "$result" = "" ]
         then
-            get_method_status "$elf_file_1" "$elf_file_2" "${func_2[i]}"
+            get_method_status "$elf_file_1" "$elf_file_2" "$var"
         fi
-        let i++
     done
+
+#    local i=0
+#    while [ $i -lt ${#func_2[*]} ]
+#    do
+#        local var1=${func_2[i]}
+#        local result=`echo ${func_1[*]} | \grep "$var1"`
+#        if [ "$result" = "" ]
+#        then
+#            get_method_status "$elf_file_1" "$elf_file_2" "$var1"
+#        fi
+#        let i++
+#    done
     print_result
+    rm -rf $elf_file_1.$PID $elf_file_2.$PID $tmp_file
     return 0
 }
 
