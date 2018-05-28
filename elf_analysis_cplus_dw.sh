@@ -26,6 +26,7 @@ func_asse_2=()
 func_asse=()
 func_num=0
 result_function=()
+summary_file="summary.$PID.txt"
 
 system_method[0]="_init"
 system_method[1]="_start"
@@ -200,11 +201,20 @@ function compare_func_asse()
     len1=${#func_asse_1[*]}
     len2=${#func_asse_2[*]}
 
+    local tmp_func_name=${func%%(*}
+    local tmp_class_name=${tmp_func_name%::*}
+    if [ "$tmp_class_name" = "$tmp_func_name" ]
+    then
+        tmp_class_name=""
+    fi
+    #echo "$tmp_class_name"
+
     if [ $len1 -eq 0 ] && [ $len2 -eq 0 ]
     then
         #echo -e "$func is not exit.\e[0m"
         result_function[$func_num]="$func"
         printf "%5s%40s%10s%10s%20s\n" "$func_num" "$func" "N" "N" "NO-EXIT"
+        printf "%5s$%40s$%40s$%10s$%10s$%20s$\n" "$func_num" "$tmp_class_name" "$func" "N" "N" "NO-EXIT" >> $summary_file
         let func_num++
         return 3
     fi
@@ -214,6 +224,7 @@ function compare_func_asse()
         #echo -e "$func is new.\e[0m"
         result_function[$func_num]="$func"
         printf "%5s%40s%10s%10s%20s\n" "$func_num" "$func" "N" "Y" "ADD"
+        printf "%5s$%40s$%40s$%10s$%10s$%20s$\n" "$func_num" "$tmp_class_name" "$func" "N" "Y" "ADD" >> $summary_file
         let func_num++
         return 1
     fi
@@ -223,6 +234,7 @@ function compare_func_asse()
         #echo -e "$func is deleted.\e[0m"
         result_function[$func_num]="$func"
         printf "%5s%40s%10s%10s%20s\n" "$func_num" "$func" "Y" "N" "DELETE"
+        printf "%5s$%40s$%40s$%10s$%10s$%20s$\n" "$func_num" "$tmp_class_name" "$func" "Y" "N" "DELETE" >> $summary_file
         let func_num++
         return 2
     fi
@@ -232,6 +244,7 @@ function compare_func_asse()
         #echo -e "$func is changed.\e[0m"
         result_function[$func_num]="$func"
         printf "%5s%40s%10s%10s%20s\n" "$func_num" "$func" "Y" "Y" "CHANGE"
+        printf "%5s$%40s$%40s$%10s$%10s$%20s$\n" "$func_num" "$tmp_class_name" "$func" "Y" "Y" "CHANGE" >> $summary_file
         let func_num++
         return 4
     fi
@@ -246,6 +259,7 @@ function compare_func_asse()
             #echo -e "$func is changed.\e[0m"
             result_function[$func_num]="$func"
             printf "%5s%40s%10s%10s%20s\n" "$func_num" "$func" "Y" "Y" "CHANGE"
+            printf "%5s$%40s$%40s$%10s$%10s$%20s$\n" "$func_num" "$tmp_class_name" "$func" "Y" "Y" "CHANGE" >> $summary_file
             let func_num++
             return 4
         fi
@@ -254,6 +268,7 @@ function compare_func_asse()
     #echo -e "$func is same.\e[0m"
     result_function[$func_num]="$func"
     printf "%5s%40s%10s%10s%20s\n" "$func_num" "$func" "Y" "Y" "SAME"
+    printf "%5s$%40s$%40s$%10s$%10s$%20s$\n" "$func_num" "$tmp_class_name" "$func" "Y" "Y" "SAME" >> $summary_file
     let func_num++
     return 0
 }

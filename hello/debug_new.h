@@ -35,9 +35,11 @@ void operator delete[](void*);	// MSVC 6 requires this declaration
 
 /* Macros */
 #ifndef DEBUG_NEW_NO_NEW_REDEFINITION
-#define new(...) DEBUG_NEW(__VA_ARGS__)
-#define DEBUG_NEW(...) new(__VA_ARGS__, __FILE__,__FUNCTION__, __LINE__)
-#define debug_new new
+#define new new(__FILE__, __FUNCTION__, __LINE__)
+#define new(ptr) DEBUG_NEW(ptr)
+#define DEBUG_NEW(ptr) new(ptr, __FILE__, __FUNCTION__, __LINE__)
+//#define DEBUG_NEW(...) new(__VA_ARGS__, __FILE__,__FUNCTION__, __LINE__)
+//#define debug_new new
 #else
 #define debug_new new(__FILE__, __FUNCTION__, __LINE__)
 #endif // DEBUG_NEW_NO_NEW_REDEFINITION
